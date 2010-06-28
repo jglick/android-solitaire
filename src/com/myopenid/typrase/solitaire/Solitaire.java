@@ -12,22 +12,30 @@ public class Solitaire extends Activity {
     public @Override void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(new View(this) {
-            Paint paint;
-            Model model = new Model();
+            Paint regularPaint, hotPaint;
+            Model model;
             int gridWidth, gridHeight;
             float textWidth, textHeight;
+            int hotX, hotY;
+            private void init() {
+                model = new Model();
+                hotX = hotY = -1;
+            }
             protected @Override void onAttachedToWindow() {
                 super.onAttachedToWindow();
                 setFocusable(true);
-                paint = new Paint();
-                paint.setColor(0xFFFFFFFF);
+                regularPaint = new Paint();
+                regularPaint.setColor(0xFFFFFFFF);
+                hotPaint = new Paint();
+                hotPaint.setColor(0xFFFF0000);
                 float[] widths = new float[Model.RANKS.length];
-                paint.getTextWidths(Model.RANKS, 0, Model.RANKS.length, widths);
-                textHeight = paint.getTextSize();
+                regularPaint.getTextWidths(Model.RANKS, 0, Model.RANKS.length, widths);
+                textHeight = regularPaint.getTextSize();
                 textWidth = 0;
                 for (float w : widths) {
                     textWidth = Math.max(w, textWidth);
                 }
+                init();
             }
             protected @Override void onSizeChanged(int width, int height, int oldw, int oldh) {
                 super.onSizeChanged(width, height, oldw, oldh);
@@ -51,7 +59,7 @@ public class Solitaire extends Activity {
                 }
                 return new int[] {mx, my};
             }
-            private void drawChar(Canvas canvas, char c, int gx, int gy) {
+            private void drawChar(Canvas canvas, char c, int gx, int gy, Paint paint) {
                 canvas.drawText(new String(new char[] {c}), textWidth * gx, textHeight * gy, paint);
             }
             protected @Override void onDraw(Canvas canvas) {
@@ -61,7 +69,7 @@ public class Solitaire extends Activity {
                 // 2.2.2
                 //y.....x
                 // .....
-                drawChar(canvas, Model.RANKS[model.flipped()], 0, 5);
+                drawChar(canvas, Model.RANKS[model.flipped()], 0, 5, regularPaint);
                 int[] size = model.matrixSize();
                 for (int x = 0; x < size[0]; x++) {
                     for (int y = 0; y < size[1]; y++) {
@@ -69,7 +77,7 @@ public class Solitaire extends Activity {
                         if (card > 0) {
                             int[] xy = model2Grid(x, y);
                             if (xy[0] < gridWidth && xy[1] < gridHeight) {
-                                drawChar(canvas, Model.RANKS[card], xy[0], xy[1]);
+                                drawChar(canvas, Model.RANKS[card], xy[0], xy[1], x == hotX && y == hotY ? hotPaint : regularPaint);
                             }
                         }
                     }
@@ -77,12 +85,10 @@ public class Solitaire extends Activity {
                 int remaining = model.deckRemaining();
                 String remS = remaining == 0 ? "END" : String.valueOf(remaining);
                 for (int x = 0; x < remS.length(); x++) {
-                    drawChar(canvas, remS.charAt(x), gridWidth - remS.length() + x, 5);
+                    drawChar(canvas, remS.charAt(x), gridWidth - remS.length() + x, 5, regularPaint);
                 }
-//                Paint red = new Paint();
-//                red.setColor(0xFFFF0000);
-//                canvas.drawLine(cursorX - 5, cursorY - 5, cursorX + 5, cursorY + 5, red);
-//                canvas.drawLine(cursorX - 5, cursorY + 5, cursorX + 5, cursorY - 5, red);
+//                canvas.drawLine(cursorX - 5, cursorY - 5, cursorX + 5, cursorY + 5, hotPaint);
+//                canvas.drawLine(cursorX - 5, cursorY + 5, cursorX + 5, cursorY - 5, hotPaint);
             }
             public @Override boolean onTouchEvent(MotionEvent me) {
                 if (me.getAction() != MotionEvent.ACTION_DOWN) {
@@ -93,7 +99,7 @@ public class Solitaire extends Activity {
                 Log.v("solitaire", "touched at grid " + gx + "," + gy);
                 if (gx == 0 && gy == 5) {
                     if (model.deckRemaining() == 0) {
-                        model = new Model();
+                        init();
                     } else {
                         model.flip();
                         Log.v("solitaire", "flip => " + Model.RANKS[model.flipped()]);
@@ -103,12 +109,23 @@ public class Solitaire extends Activity {
                     if (xy != null) {
                         int mx = xy[0];
                         int my = xy[1];
-                        if (model.canAcquire(mx, my)) {
+                        if (mx == hotX && my == hotY) {
+                            hotX = -1;
+                            hotY = -1;
+                        } else if (model.canAcquire(mx, my)) {
                             Log.v("solitaire", "acquire " + Model.RANKS[model.read(mx, my)] + " @" + mx + "," + my);
                             model.acquire(mx, my);
+                        } else if (hotX == -1 && model.present(mx, my) && model.free(mx, my)) {
+                            Log.v("solitaire", "hold " + Model.RANKS[model.read(mx, my)] + " @" + mx + "," + my);
+                            hotX = mx;
+                            hotY = my;
+                        } else if (hotX != -1 && model.canMove(hotX, hotY, mx, my)) {
+                            Log.v("solitaire", "move " + hotX + "," + hotY + " -> " + mx + "," + my);
+                            model.move(hotX, hotY, mx, my);
+                            hotX = -1;
+                            hotY = -1;
                         } else {
-                            Log.v("solitaire", "cannot acquire " + Model.RANKS[model.read(mx, my)] + " @" + mx + "," + my);
-                            // XXX see if we can move it
+                            Log.v("solitaire", "cannot do anything at " + mx + "," + my);
                         }
                     }
                 }

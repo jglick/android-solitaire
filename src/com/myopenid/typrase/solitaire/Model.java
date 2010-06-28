@@ -89,7 +89,7 @@ final class Model {
     }
      */
     public byte read(int x, int y) {
-        if (x == deckSize || y == deckSize) {
+        if (x == deckSize || y == deckSize || x == -1 || y == -1) {
             return 0; // simplify boundary logic
         }
         assert 0 <= x && x < deckSize && 0 <= y && y < deckSize;
@@ -164,12 +164,18 @@ final class Model {
                 (card1 == 1 && card2 == RANK_SIZE) ||
                 (card1 == RANK_SIZE && card2 == 1);
     }
+    public boolean present(int x, int y) {
+        return read(x, y) > 0;
+    }
+    public boolean free(int x, int y) {
+        return !present(x + 1, y) && !present(x, y + 1);
+    }
     public boolean canAcquire(int x, int y) {
         byte c = read(x, y);
         if (c == 0 || !adjacent(flipped, c)) {
             return false;
         }
-        if (read(x + 1, y) > 0 || read(x, y + 1) > 0) {
+        if (!free(x, y)) {
             return false;
         }
         return true;
@@ -178,5 +184,17 @@ final class Model {
         assert canAcquire(x, y);
         flipped = read(x, y);
         store(x, y, (byte) 0);
+    }
+    public boolean canMove(int x1, int y1, int x2, int y2) {
+        if (!present(x1, y1) || !free(x1, y1) || present(x2, y2)) {
+            return false;
+        }
+        byte c = read(x1, y1);
+        return adjacent(c, read(x2 - 1, y2)) || adjacent(c, read(x2, y2 - 1));
+    }
+    public void move(int x1, int y1, int x2, int y2) {
+        assert canMove(x1, y1, x2, y2);
+        store(x2, y2, read(x1, y1));
+        store(x1, y1, (byte) 0);
     }
 }
