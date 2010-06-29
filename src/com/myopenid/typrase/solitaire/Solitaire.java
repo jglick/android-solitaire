@@ -12,11 +12,12 @@ public class Solitaire extends Activity {
     public @Override void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(new View(this) {
-            Paint regularPaint, hotPaint;
+            Paint regularPaint, hotPaint, cursorPaint;
             Model model;
             int gridWidth, gridHeight;
             float textWidth, textHeight;
             int hotX, hotY;
+            float cursorX, cursorY;
             private void init() {
                 model = new Model();
                 hotX = hotY = -1;
@@ -26,8 +27,12 @@ public class Solitaire extends Activity {
                 setFocusable(true);
                 regularPaint = new Paint();
                 regularPaint.setColor(0xFFFFFFFF);
+                regularPaint.setTextSize(15);
                 hotPaint = new Paint();
                 hotPaint.setColor(0xFFFF0000);
+                hotPaint.setTextSize(18);
+                cursorPaint = new Paint();
+                cursorPaint.setColor(0xFF00FF00);
                 float[] widths = new float[Model.RANKS.length];
                 regularPaint.getTextWidths(Model.RANKS, 0, Model.RANKS.length, widths);
                 textHeight = regularPaint.getTextSize();
@@ -41,6 +46,8 @@ public class Solitaire extends Activity {
                 super.onSizeChanged(width, height, oldw, oldh);
                 gridWidth = (int) (width / textWidth);
                 gridHeight = (int) (height / textHeight);
+                cursorX = width / 2;
+                cursorY = height / 2;
                 Log.v("solitaire", "grid: " + gridWidth + "x" + gridHeight + "; " + model);
             }
             private int[] model2Grid(int x, int y) {
@@ -69,7 +76,10 @@ public class Solitaire extends Activity {
                 // 2.2.2
                 //y.....x
                 // .....
-                drawChar(canvas, Model.RANKS[model.flipped()], 0, 5, regularPaint);
+                float left = textWidth * (int) (cursorX / textWidth);
+                float top = textHeight * (((int) (cursorY / textHeight)) - 1);
+                canvas.drawRect(left, top, left + textWidth, top + textHeight, cursorPaint);
+                drawChar(canvas, Model.RANKS[model.flipped()], 1, 3, regularPaint);
                 int[] size = model.matrixSize();
                 for (int x = 0; x < size[0]; x++) {
                     for (int y = 0; y < size[1]; y++) {
@@ -85,8 +95,18 @@ public class Solitaire extends Activity {
                 int remaining = model.deckRemaining();
                 String remS = remaining == 0 ? "END" : String.valueOf(remaining);
                 for (int x = 0; x < remS.length(); x++) {
-                    drawChar(canvas, remS.charAt(x), gridWidth - remS.length() + x, 5, regularPaint);
+                    drawChar(canvas, remS.charAt(x), gridWidth - remS.length() + x - 1, 3, regularPaint);
                 }
+                drawChar(canvas, 'L', 1, 1, regularPaint);
+                drawChar(canvas, 'o', 2, 1, regularPaint);
+                drawChar(canvas, 'v', 3, 1, regularPaint);
+                drawChar(canvas, 'e', 4, 1, regularPaint);
+                drawChar(canvas, ',', 5, 1, regularPaint);
+                drawChar(canvas, 'J', gridWidth - 6, 1, regularPaint);
+                drawChar(canvas, 'e', gridWidth - 5, 1, regularPaint);
+                drawChar(canvas, 's', gridWidth - 4, 1, regularPaint);
+                drawChar(canvas, 's', gridWidth - 3, 1, regularPaint);
+                drawChar(canvas, 'e', gridWidth - 2, 1, regularPaint);
 //                canvas.drawLine(cursorX - 5, cursorY - 5, cursorX + 5, cursorY + 5, hotPaint);
 //                canvas.drawLine(cursorX - 5, cursorY + 5, cursorX + 5, cursorY - 5, hotPaint);
             }
@@ -97,7 +117,22 @@ public class Solitaire extends Activity {
                 int gx = (int) (me.getX() / textWidth);
                 int gy = (int) (me.getY() / textHeight) + 1;
                 Log.v("solitaire", "touched at grid " + gx + "," + gy);
-                if (gx == 0 && gy == 5) {
+                return true;
+            }
+            public @Override boolean onTrackballEvent(MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    Log.v("solitaire", "trackball click @" + cursorX + "," + cursorY);
+                    handle((int) (cursorX / textWidth), (int) (cursorY / textHeight));
+                } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                    Log.v("solitaire", "trackball move " + event.getX() + "," + event.getY());
+                    cursorX += event.getX() * textWidth;
+                    cursorY += event.getY() * textHeight;
+                    invalidate();
+                }
+                return true;
+            }
+            private void handle(int gx, int gy) {
+                if (gx == 1 && gy == 3) {
                     if (model.deckRemaining() == 0) {
                         init();
                     } else {
@@ -130,7 +165,6 @@ public class Solitaire extends Activity {
                     }
                 }
                 invalidate();
-                return true;
             }
         });
     }
