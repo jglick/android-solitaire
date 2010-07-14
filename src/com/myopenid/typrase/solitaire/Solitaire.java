@@ -29,10 +29,8 @@ public class Solitaire extends Activity {
                 regularPaint.setColor(0xFFFFFFFF);
                 regularPaint.setTextSize(15);
                 regularPaint.setAntiAlias(true);
-                hotPaint = new Paint();
+                hotPaint = new Paint(regularPaint);
                 hotPaint.setColor(0xFFFF0000);
-                hotPaint.setTextSize(regularPaint.getTextSize());
-                hotPaint.setAntiAlias(true);
                 cursorPaint = new Paint();
                 cursorPaint.setColor(0xFF00FF00);
                 cursorPaint.setAntiAlias(true);
@@ -104,16 +102,18 @@ public class Solitaire extends Activity {
                 for (int x = 0; x < remS.length(); x++) {
                     drawChar(canvas, remS.charAt(x), gridWidth - remS.length() + x - 1, 3, regularPaint);
                 }
-                drawChar(canvas, 'L', 1, 1, regularPaint);
-                drawChar(canvas, 'o', 2, 1, regularPaint);
-                drawChar(canvas, 'v', 3, 1, regularPaint);
-                drawChar(canvas, 'e', 4, 1, regularPaint);
-                drawChar(canvas, ',', 5, 1, regularPaint);
-                drawChar(canvas, 'J', gridWidth - 6, 1, regularPaint);
-                drawChar(canvas, 'e', gridWidth - 5, 1, regularPaint);
-                drawChar(canvas, 's', gridWidth - 4, 1, regularPaint);
-                drawChar(canvas, 's', gridWidth - 3, 1, regularPaint);
-                drawChar(canvas, 'e', gridWidth - 2, 1, regularPaint);
+                Paint lovePaint = new Paint(regularPaint);
+                lovePaint.setColor(0xFF777777);
+                drawChar(canvas, 'L', 1, 1, lovePaint);
+                drawChar(canvas, 'o', 2, 1, lovePaint);
+                drawChar(canvas, 'v', 3, 1, lovePaint);
+                drawChar(canvas, 'e', 4, 1, lovePaint);
+                drawChar(canvas, ',', 5, 1, lovePaint);
+                drawChar(canvas, 'J', gridWidth - 6, 1, lovePaint);
+                drawChar(canvas, 'e', gridWidth - 5, 1, lovePaint);
+                drawChar(canvas, 's', gridWidth - 4, 1, lovePaint);
+                drawChar(canvas, 's', gridWidth - 3, 1, lovePaint);
+                drawChar(canvas, 'e', gridWidth - 2, 1, lovePaint);
             }
             public @Override boolean onTouchEvent(MotionEvent me) {
                 if (me.getAction() != MotionEvent.ACTION_DOWN) {
@@ -131,16 +131,19 @@ public class Solitaire extends Activity {
                     handle(xy[0], xy[1]);
                 } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
                     Log.v("solitaire", "trackball move " + event.getX() + "," + event.getY());
-                    cursorX += event.getX() * textWidth;
-                    cursorY += event.getY() * textHeight;
+                    float acceleration = 2f;
+                    cursorX += event.getX() * textWidth * acceleration;
+                    cursorY += event.getY() * textHeight * acceleration;
                     invalidate();
                 }
                 return true;
             }
             private int[] snapCursor() {
-                int freeX = (int) (cursorX / textWidth);
-                int freeY = (int) (cursorY / textHeight);
-                return new int[] {freeX, freeY};
+                float normX = cursorX / textWidth;
+                float normY = cursorY / textHeight;
+                int vx = (int) ((normX + normY) / 2);
+                int vy = (int) ((normY - normX + 1) / 2);
+                return new int[] {vx - vy, vx + vy};
             }
             private void handle(int gx, int gy) {
                 if (gx == 1 && gy == 3) {
