@@ -28,11 +28,14 @@ public class Solitaire extends Activity {
                 regularPaint = new Paint();
                 regularPaint.setColor(0xFFFFFFFF);
                 regularPaint.setTextSize(15);
+                regularPaint.setAntiAlias(true);
                 hotPaint = new Paint();
                 hotPaint.setColor(0xFFFF0000);
-                hotPaint.setTextSize(18);
+                hotPaint.setTextSize(regularPaint.getTextSize());
+                hotPaint.setAntiAlias(true);
                 cursorPaint = new Paint();
                 cursorPaint.setColor(0xFF00FF00);
+                cursorPaint.setAntiAlias(true);
                 float[] widths = new float[Model.RANKS.length];
                 regularPaint.getTextWidths(Model.RANKS, 0, Model.RANKS.length, widths);
                 textHeight = regularPaint.getTextSize();
@@ -67,7 +70,11 @@ public class Solitaire extends Activity {
                 return new int[] {mx, my};
             }
             private void drawChar(Canvas canvas, char c, int gx, int gy, Paint paint) {
-                canvas.drawText(new String(new char[] {c}), textWidth * gx, textHeight * gy, paint);
+                if (c == 'X') {
+                    canvas.drawText("10", textWidth * gx - textWidth / 2, textHeight * gy, paint);
+                } else {
+                    canvas.drawText(new String(new char[] {c}), textWidth * gx + (c == 'J' ? textWidth * .2f : 0), textHeight * gy, paint);
+                }
             }
             protected @Override void onDraw(Canvas canvas) {
                 super.onDraw(canvas);
@@ -76,9 +83,9 @@ public class Solitaire extends Activity {
                 // 2.2.2
                 //y.....x
                 // .....
-                float left = textWidth * (int) (cursorX / textWidth);
-                float top = textHeight * (((int) (cursorY / textHeight)) - 1);
-                canvas.drawRect(left, top, left + textWidth, top + textHeight, cursorPaint);
+                int[] cursorXY = snapCursor();
+                // Center offsets determined by trial and error acc. to typical font and size:
+                canvas.drawCircle(textWidth * (cursorXY[0] + .45f), textHeight * (cursorXY[1] - .3f), (textWidth + textHeight) / 2, cursorPaint);
                 drawChar(canvas, Model.RANKS[model.flipped()], 1, 3, regularPaint);
                 int[] size = model.matrixSize();
                 for (int x = 0; x < size[0]; x++) {
@@ -107,8 +114,6 @@ public class Solitaire extends Activity {
                 drawChar(canvas, 's', gridWidth - 4, 1, regularPaint);
                 drawChar(canvas, 's', gridWidth - 3, 1, regularPaint);
                 drawChar(canvas, 'e', gridWidth - 2, 1, regularPaint);
-//                canvas.drawLine(cursorX - 5, cursorY - 5, cursorX + 5, cursorY + 5, hotPaint);
-//                canvas.drawLine(cursorX - 5, cursorY + 5, cursorX + 5, cursorY - 5, hotPaint);
             }
             public @Override boolean onTouchEvent(MotionEvent me) {
                 if (me.getAction() != MotionEvent.ACTION_DOWN) {
@@ -122,7 +127,8 @@ public class Solitaire extends Activity {
             public @Override boolean onTrackballEvent(MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     Log.v("solitaire", "trackball click @" + cursorX + "," + cursorY);
-                    handle((int) (cursorX / textWidth), (int) (cursorY / textHeight));
+                    int[] xy = snapCursor();
+                    handle(xy[0], xy[1]);
                 } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
                     Log.v("solitaire", "trackball move " + event.getX() + "," + event.getY());
                     cursorX += event.getX() * textWidth;
@@ -130,6 +136,11 @@ public class Solitaire extends Activity {
                     invalidate();
                 }
                 return true;
+            }
+            private int[] snapCursor() {
+                int freeX = (int) (cursorX / textWidth);
+                int freeY = (int) (cursorY / textHeight);
+                return new int[] {freeX, freeY};
             }
             private void handle(int gx, int gy) {
                 if (gx == 1 && gy == 3) {
